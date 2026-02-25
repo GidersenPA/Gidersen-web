@@ -199,15 +199,26 @@ const App = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
     const formData = new FormData(e.target);
-    const email = formData.get('email');
+    const email = formData.get('email').trim();
     const password = formData.get('password');
 
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthError('Geçerli bir e-posta adresi girin (örn: ad@eposta.com).');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAuthError('Şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setAuthError('Giriş başarısız: ' + (error.message === 'Invalid login credentials' ? 'E-posta veya şifre hatalı.' : error.message));
+      setAuthError(error.message === 'Invalid login credentials'
+        ? 'E-posta veya şifre hatalı. Lütfen kontrol edin.'
+        : 'Giriş başarısız: ' + error.message);
     } else {
       navigate('/firm');
     }
@@ -216,17 +227,36 @@ const App = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    const formData = new FormData(e.target);
+    const storeName = formData.get('storeName').trim();
+    const locationVal = formData.get('location').trim();
+    const email = formData.get('email').trim();
+    const password = formData.get('password');
+
+    if (storeName.length < 3) {
+      setAuthError('Mağaza adı en az 3 karakter olmalıdır.');
+      return;
+    }
+    if (!locationVal) {
+      setAuthError('Konum alanı boş bırakılamaz.');
+      return;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthError('Geçerli bir e-posta adresi girin (örn: ad@eposta.com).');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError('Şifre en az 6 karakter olmalıdır.');
+      return;
+    }
+
     setAuthLoading(true);
     setAuthError('');
-    const formData = new FormData(e.target);
-    const email = formData.get('email');
-    const password = formData.get('password');
-    const storeName = formData.get('storeName');
-    const locationVal = formData.get('location');
-
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      setAuthError('Kayıt başarısız: ' + error.message);
+      setAuthError(error.message === 'User already registered'
+        ? 'Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.'
+        : 'Kayıt başarısız: ' + error.message);
       setAuthLoading(false);
       return;
     }
@@ -539,6 +569,7 @@ const App = () => {
     const [submitting, setSubmitting] = useState(false);
     const [imageFile, setImageFile] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [formErrors, setFormErrors] = useState({});
 
     const handleFileChange = (e) => {
       const file = e.target.files[0];
@@ -550,47 +581,78 @@ const App = () => {
 
     const onSubmit = async (e) => {
       e.preventDefault();
-      setSubmitting(true);
       const formData = new FormData(e.target);
+      const name = formData.get('name').trim();
+      const marketPrice = Number(formData.get('marketPrice'));
+      const gidersenPrice = Number(formData.get('gidersenPrice'));
+
+      const errors = {};
+      if (!name || name.length < 2) errors.name = 'Ürün adı en az 2 karakter olmalıdır.';
+      if (!marketPrice || marketPrice < 1) errors.marketPrice = 'Pazar yeri fiyatı en az 1 ₺ olmalıdır.';
+      else if (marketPrice > 9999999) errors.marketPrice = 'Fiyat 9.999.999 ₺ üzerinde olamaz.';
+      if (!gidersenPrice || gidersenPrice < 1) errors.gidersenPrice = 'Gidersen fiyatı en az 1 ₺ olmalıdır.';
+      else if (gidersenPrice > 9999999) errors.gidersenPrice = 'Fiyat 9.999.999 ₺ üzerinde olamaz.';
+      else if (gidersenPrice >= marketPrice) errors.gidersenPrice = 'Gidersen fiyatı, pazar yeri fiyatından düşük olmalıdır.';
+
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        return;
+      }
+
+      setFormErrors({});
+      setSubmitting(true);
       await handleAddProduct({
-        name: formData.get('name'),
+        name,
         category: formData.get('category'),
-        marketplacePrice: Number(formData.get('marketPrice')),
-        gidersenPrice: Number(formData.get('gidersenPrice')),
+        marketplacePrice: marketPrice,
+        gidersenPrice,
         imageFile,
       });
       setSubmitting(false);
     };
+
+    const inputClass = (field) =>
+      `w-full px-4 py-3 rounded-xl border ${formErrors[field] ? 'border-red-400 bg-red-50' : 'border-slate-200'} focus:outline-none focus:ring-2 focus:ring-orange-500`;
 
     return (
       <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200">
         <h3 className="font-black text-xl mb-6 flex items-center gap-2">
           <PlusCircle className="w-5 h-5 text-orange-600" /> Yeni İlan
         </h3>
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <input name="name" placeholder="Ürün Adı" required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
-          <select name="category" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white">
-            <option>Elektronik</option>
-            <option>Moda</option>
-            <option>Ev & Yaşam</option>
-            <option>Mobilya</option>
-            <option>Ev Aletleri</option>
-          </select>
+        <form className="space-y-4" noValidate onSubmit={onSubmit}>
+          <div>
+            <label htmlFor="productName" className="block text-sm font-bold text-slate-600 mb-1.5">Ürün Adı</label>
+            <input id="productName" name="name" type="text" placeholder="örn: iPhone 15 Pro" className={inputClass('name')} />
+            {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="productCategory" className="block text-sm font-bold text-slate-600 mb-1.5">Kategori</label>
+            <select id="productCategory" name="category" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option>Elektronik</option>
+              <option>Moda</option>
+              <option>Ev & Yaşam</option>
+              <option>Mobilya</option>
+              <option>Ev Aletleri</option>
+            </select>
+          </div>
+
           <div>
             <label htmlFor="marketPrice" className="block text-sm font-bold text-slate-600 mb-1.5">Pazar Yeri Fiyatı (₺)</label>
-            <input id="marketPrice" name="marketPrice" type="number" min="1" max="9999999" step="1" placeholder="örn: 4200" required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+            <input id="marketPrice" name="marketPrice" type="number" placeholder="örn: 4200" className={inputClass('marketPrice')} />
+            {formErrors.marketPrice && <p className="text-red-500 text-xs mt-1">{formErrors.marketPrice}</p>}
           </div>
+
           <div>
             <label htmlFor="gidersenPrice" className="block text-sm font-bold text-slate-600 mb-1.5">Gidersen Fiyatı (₺)</label>
-            <input id="gidersenPrice" name="gidersenPrice" type="number" min="1" max="9999999" step="1" placeholder="örn: 3500" required className="w-full px-4 py-3 rounded-xl border-2 border-orange-500" />
+            <input id="gidersenPrice" name="gidersenPrice" type="number" placeholder="örn: 3500" className={`${inputClass('gidersenPrice')} ${!formErrors.gidersenPrice ? 'border-2 border-orange-500' : ''}`} />
+            {formErrors.gidersenPrice && <p className="text-red-500 text-xs mt-1">{formErrors.gidersenPrice}</p>}
           </div>
 
           <div>
             <label className="block text-sm font-bold text-slate-600 mb-2">Ürün Fotoğrafı</label>
             <input type="file" accept="image/*" onChange={handleFileChange} className="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-100 file:text-orange-700 file:font-bold" />
-            {preview && (
-              <img src={preview} alt="Önizleme" className="mt-3 w-full h-32 object-cover rounded-xl border" />
-            )}
+            {preview && <img src={preview} alt="Önizleme" className="mt-3 w-full h-32 object-cover rounded-xl border" />}
           </div>
 
           <button
@@ -721,7 +783,7 @@ const App = () => {
             </div>
           )}
 
-          <form className="space-y-4" onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
+          <form className="space-y-4" noValidate onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
             {authMode === 'register' && (
               <>
                 <div>
