@@ -81,7 +81,7 @@ const App = () => {
     const { data } = await supabase
       .from('sellers')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (data) {
@@ -101,7 +101,7 @@ const App = () => {
         category,
         marketplace_price,
         gidersen_price,
-        image_path,
+        image_url,
         is_active,
         sellers (
           id,
@@ -124,7 +124,7 @@ const App = () => {
         location: p.sellers?.location || '',
         phone: p.sellers?.phone || '',
         category: p.category,
-        image: getProductImageUrl(p.image_path),
+        image: getProductImageUrl(p.image_url),
       }));
       setProducts(mapped);
     }
@@ -233,10 +233,9 @@ const App = () => {
 
     if (data.user) {
       const { error: sellerError } = await supabase.from('sellers').insert({
-        id: data.user.id,
+        user_id: data.user.id,
         store_name: storeName,
         location: locationVal,
-        email,
       });
       if (sellerError) {
         setAuthError('Profil oluşturulurken hata: ' + sellerError.message);
@@ -260,7 +259,7 @@ const App = () => {
   const handleAddProduct = async ({ name, category, marketplacePrice, gidersenPrice, imageFile }) => {
     if (!firmInfo) return;
 
-    let imagePath = null;
+    let imageUrl = null;
 
     if (imageFile) {
       const ext = imageFile.name.split('.').pop();
@@ -269,7 +268,7 @@ const App = () => {
         .from('product-images')
         .upload(fileName, imageFile, { upsert: false });
       if (!uploadError) {
-        imagePath = fileName;
+        imageUrl = getProductImageUrl(fileName);
       }
     }
 
@@ -279,7 +278,7 @@ const App = () => {
       category,
       marketplace_price: marketplacePrice,
       gidersen_price: gidersenPrice,
-      image_path: imagePath,
+      image_url: imageUrl,
       is_active: true,
     });
 
