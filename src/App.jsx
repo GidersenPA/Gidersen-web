@@ -318,7 +318,7 @@ const App = () => {
     >
       <div className="relative h-48 overflow-hidden bg-slate-100">
         {product.image ? (
-          <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          <img src={product.image} alt={`${product.name} - ${product.firm} - ${product.gidersenPrice.toLocaleString()} ₺ - ${product.location}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-300">
             <ShoppingBag className="w-12 h-12" />
@@ -576,8 +576,14 @@ const App = () => {
             <option>Mobilya</option>
             <option>Ev Aletleri</option>
           </select>
-          <input name="marketPrice" type="number" placeholder="Pazar Yeri Fiyatı (₺)" required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
-          <input name="gidersenPrice" type="number" placeholder="Gidersen Fiyatı (₺)" required className="w-full px-4 py-3 rounded-xl border-2 border-orange-500" />
+          <div>
+            <label htmlFor="marketPrice" className="block text-sm font-bold text-slate-600 mb-1.5">Pazar Yeri Fiyatı (₺)</label>
+            <input id="marketPrice" name="marketPrice" type="number" min="1" max="9999999" step="1" placeholder="örn: 4200" required className="w-full px-4 py-3 rounded-xl border border-slate-200" />
+          </div>
+          <div>
+            <label htmlFor="gidersenPrice" className="block text-sm font-bold text-slate-600 mb-1.5">Gidersen Fiyatı (₺)</label>
+            <input id="gidersenPrice" name="gidersenPrice" type="number" min="1" max="9999999" step="1" placeholder="örn: 3500" required className="w-full px-4 py-3 rounded-xl border-2 border-orange-500" />
+          </div>
 
           <div>
             <label className="block text-sm font-bold text-slate-600 mb-2">Ürün Fotoğrafı</label>
@@ -601,6 +607,7 @@ const App = () => {
 
   const FirmPortal = () => {
     const myProducts = products.filter(p => p.sellerId === firmInfo?.id);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     if (isLoggedIn) return (
       <div className="max-w-6xl mx-auto py-12 px-4">
@@ -613,9 +620,36 @@ const App = () => {
                 <MapPin className="w-4 h-4" /> {firmInfo?.location}
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-              <LogOut className="w-6 h-6" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors font-bold text-sm"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline">Hesap</span>
+                <ChevronRight className={`w-4 h-4 transition-transform ${showProfileMenu ? 'rotate-90' : ''}`} />
+              </button>
+              {showProfileMenu && (
+                <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden w-56 z-50">
+                  <div className="p-4 border-b border-slate-100">
+                    <p className="font-black text-slate-800 truncate">{firmInfo?.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{firmInfo?.location}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowProfileMenu(false)}
+                    className="w-full px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-orange-600" /> Panel
+                  </button>
+                  <button
+                    onClick={() => { setShowProfileMenu(false); handleLogout(); }}
+                    className="w-full px-4 py-3 text-left text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100"
+                  >
+                    <LogOut className="w-4 h-4" /> Çıkış Yap
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -690,12 +724,24 @@ const App = () => {
           <form className="space-y-4" onSubmit={authMode === 'login' ? handleLogin : handleRegister}>
             {authMode === 'register' && (
               <>
-                <input name="storeName" type="text" placeholder="Mağaza Adı" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
-                <input name="location" type="text" placeholder="Konum (örn: Kadıköy, İstanbul)" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+                <div>
+                  <label htmlFor="storeName" className="block text-sm font-bold text-slate-600 mb-1.5">Mağaza Adı</label>
+                  <input id="storeName" name="storeName" type="text" autoComplete="organization" placeholder="örn: Teknoloji Dünyası" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+                </div>
+                <div>
+                  <label htmlFor="location" className="block text-sm font-bold text-slate-600 mb-1.5">Konum</label>
+                  <input id="location" name="location" type="text" autoComplete="off" placeholder="örn: Kadıköy, İstanbul" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+                </div>
               </>
             )}
-            <input name="email" type="email" placeholder="E-posta Adresi" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
-            <input name="password" type="password" placeholder="Şifre" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+            <div>
+              <label htmlFor="auth-email" className="block text-sm font-bold text-slate-600 mb-1.5">E-posta Adresi</label>
+              <input id="auth-email" name="email" type="email" autoComplete="email" placeholder="ornek@eposta.com" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required />
+            </div>
+            <div>
+              <label htmlFor="auth-password" className="block text-sm font-bold text-slate-600 mb-1.5">Şifre</label>
+              <input id="auth-password" name="password" type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} placeholder="En az 6 karakter" className="w-full px-5 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none" required minLength={6} />
+            </div>
 
             <button
               type="submit"
@@ -764,7 +810,7 @@ const App = () => {
         </button>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100">
           {product.image ? (
-            <img src={product.image} alt={product.name} className="w-full aspect-square object-cover rounded-3xl shadow-inner border" />
+            <img src={product.image} alt={`${product.name} - ${product.firm} - ${product.gidersenPrice.toLocaleString()} ₺`} className="w-full aspect-square object-cover rounded-3xl shadow-inner border" />
           ) : (
             <div className="w-full aspect-square rounded-3xl bg-slate-100 flex items-center justify-center">
               <ShoppingBag className="w-24 h-24 text-slate-300" />
